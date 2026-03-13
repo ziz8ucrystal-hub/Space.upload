@@ -1,4 +1,4 @@
-name: Upload Videos to Telegram
+name: رفع الفيديوهات إلى GoFile
 
 on:
   workflow_dispatch:  # يشغل يدوياً فقط
@@ -9,16 +9,17 @@ jobs:
     timeout-minutes: 360
     
     steps:
-    - uses: actions/checkout@v2
+    - name: جلب المشروع
+      uses: actions/checkout@v3
     
-    - name: Setup Python
-      uses: actions/setup-python@v2
+    - name: نصب Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
-    - name: Install dependencies
+    - name: نصب المكتبات
       run: |
-        pip install yt-dlp python-telegram-bot
+        pip install yt-dlp requests
     
-    - name: Run upload script
+    - name: تشغيل السكربت
       run: python upload.py
