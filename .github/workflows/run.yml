@@ -1,25 +1,27 @@
-name: رفع الفيديوهات إلى GoFile
+name: رفع الفيديوهات إلى GoFile.io
 
 on:
-  workflow_dispatch:  # يشغل يدوياً فقط
+  workflow_dispatch:  # يتيح لك تشغيله يدوياً من GitHub
+  schedule:
+    - cron: '0 0 * * 0'  # اختياري: يشغل تلقائياً كل يوم أحد (يمكنك حذفه)
 
 jobs:
   upload:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 360  # الحد الأقصى 6 ساعات (لأن الفيديوهات كثيرة)
     
     steps:
-    - name: جلب المشروع
+    - name: 📥 جلب المشروع
       uses: actions/checkout@v3
     
-    - name: نصب Python
+    - name: 🐍 نصب Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
     
-    - name: نصب المكتبات
+    - name: 📦 نصب المكتبات المطلوبة
       run: |
         pip install yt-dlp requests
     
-    - name: تشغيل السكربت
+    - name: 🚀 تشغيل سكربت الرفع
       run: python upload.py
