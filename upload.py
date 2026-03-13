@@ -6,7 +6,7 @@ from datetime import datetime
 
 # ========== توكن بوت تليجرام ==========
 BOT_TOKEN = "8763050525:AAGjCizH6kCuWJc4e8tt6TKaSMRDYgA1hxQ"
-CHANNEL_ID = "7283912673"  # حسابك الشخصي - البوت يرسل لك هنا
+CHANNEL_ID = "7283912673"  # حسابك الشخصي
 
 # ========== قائمة الفيديوهات ==========
 VIDEOS = [
@@ -42,6 +42,17 @@ VIDEOS = [
     {"url": "https://vimeo.com/1086207587?share=copy", "title": "30_P2_Order_Block_02"},
     {"url": "https://vimeo.com/1086211265?share=copy", "title": "31_P1_Price_Action_01"},
 ]
+
+# ========== دالة تحويل رابط Vimeo ==========
+def fix_vimeo_url(url):
+    """تحويل أي رابط Vimeo إلى صيغة قابلة للتحميل"""
+    if 'player.vimeo.com/video/' in url:
+        # استخراج رقم الفيديو من رابط player
+        video_id = url.split('/')[-1].split('?')[0]
+        fixed_url = f"https://vimeo.com/{video_id}"
+        print(f"🔗 تم تحويل: {url} -> {fixed_url}")
+        return fixed_url
+    return url
 
 # ========== دالة رفع إلى GoFile.io ==========
 def upload_to_gofile(filepath):
@@ -120,6 +131,10 @@ def main():
     for i, video in enumerate(VIDEOS, 1):
         print(f"\n[{i}/{len(VIDEOS)}] 📥 {video['title']}")
         
+        # تحويل الرابط إذا كان من نوع player
+        video_url = fix_vimeo_url(video['url'])
+        print(f"🔗 الرابط المستخدم: {video_url}")
+        
         filename = f"video_{i}.mp4"
         
         try:
@@ -134,7 +149,7 @@ def main():
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video['url']])
+                ydl.download([video_url])
             
             # التحقق من التحميل
             if os.path.exists(filename) and os.path.getsize(filename) > 0:
