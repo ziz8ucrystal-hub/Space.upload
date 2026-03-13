@@ -8,7 +8,7 @@ from datetime import datetime
 BOT_TOKEN = "8763050525:AAGjCizH6kCuWJc4e8tt6TKaSMRDYgA1hxQ"
 CHANNEL_ID = "@JF_Ziz8u"
 
-# ========== قائمة الفيديوهات مباشرة في الملف ==========
+# ========== قائمة الفيديوهات ==========
 VIDEOS = [
     {"url": "https://player.vimeo.com/video/1043974638", "title": "01_Trading_View"},
     {"url": "https://player.vimeo.com/video/1064144416", "title": "02_Risk_Management_P1"},
@@ -43,23 +43,9 @@ VIDEOS = [
     {"url": "https://vimeo.com/1086211265?share=copy", "title": "31_P1_Price_Action_01"},
 ]
 
-# ========== دوال المساعدة ==========
-def send_telegram(message):
-    """إرسال رسالة إلى تليجرام"""
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = {
-        'chat_id': CHANNEL_ID,
-        'text': message,
-        'parse_mode': 'HTML'
-    }
-    try:
-        requests.post(url, data=data, timeout=10)
-        print(f"📤 تم إرسال: {message[:50]}...")
-    except Exception as e:
-        print(f"❌ خطأ في إرسال تليجرام: {e}")
-
+# ========== دالة رفع إلى GoFile.io ==========
 def upload_to_gofile(filepath):
-    """رفع الملف إلى GoFile.io"""
+    """رفع الملف إلى GoFile.io (بدون حدود)"""
     try:
         with open(filepath, 'rb') as f:
             response = requests.post(
@@ -76,6 +62,20 @@ def upload_to_gofile(filepath):
     except Exception as e:
         print(f"❌ خطأ في الرفع: {e}")
         return None
+
+# ========== دالة إرسال رسالة تليجرام ==========
+def send_telegram(message):
+    """إرسال رسالة إلى قناة تليجرام"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {
+        'chat_id': CHANNEL_ID,
+        'text': message,
+        'parse_mode': 'HTML'
+    }
+    try:
+        requests.post(url, data=data, timeout=10)
+    except Exception as e:
+        print(f"❌ خطأ في إرسال تليجرام: {e}")
 
 # ========== الدالة الرئيسية ==========
 def main():
@@ -97,7 +97,7 @@ def main():
             # 1. تحميل الفيديو من Vimeo
             print("📥 جاري التحميل من Vimeo...")
             ydl_opts = {
-                'format': 'best[height<=480]',  # جودة 480p
+                'format': 'best[height<=480]',  # جودة 480p توازن بين الجودة والحجم
                 'outtmpl': filename,
                 'quiet': True,
                 'no_warnings': True,
@@ -112,7 +112,7 @@ def main():
                 print(f"✅ تم التحميل ({size_mb:.1f} MB)")
                 print("📤 جاري الرفع إلى GoFile.io...")
                 
-                # 3. رفع إلى GoFile
+                # 3. رفع إلى GoFile.io (بدون حدود)
                 link = upload_to_gofile(filename)
                 
                 if link:
@@ -124,10 +124,10 @@ def main():
                         f"🔗 <a href='{link}'>رابط التحميل</a>"
                     )
                     send_telegram(message)
-                    print(f"✅ تم رفع {video['title']}")
+                    print(f"✅ تم رفع {video['title']} إلى GoFile.io")
                     successful += 1
                 else:
-                    print(f"❌ فشل الرفع إلى GoFile")
+                    print(f"❌ فشل الرفع إلى GoFile.io")
                     failed += 1
                 
                 # 5. حذف الملف المؤقت
