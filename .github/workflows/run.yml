@@ -1,0 +1,24 @@
+name: Upload Videos to Telegram
+
+on:
+  workflow_dispatch:  # يشغل يدوياً فقط
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install yt-dlp python-telegram-bot
+    
+    - name: Run upload script
+      run: python upload.py
