@@ -6,7 +6,7 @@ from datetime import datetime
 
 # ========== توكن بوت تليجرام ==========
 BOT_TOKEN = "8763050525:AAGjCizH6kCuWJc4e8tt6TKaSMRDYgA1hxQ"
-CHANNEL_ID = "@JF_Ziz8u"
+CHANNEL_ID = "7283912673"  # حسابك الشخصي - البوت يرسل لك هنا
 
 # ========== قائمة الفيديوهات ==========
 VIDEOS = [
@@ -43,9 +43,9 @@ VIDEOS = [
     {"url": "https://vimeo.com/1086211265?share=copy", "title": "31_P1_Price_Action_01"},
 ]
 
-# ========== دالة رفع إلى GoFile.io (محدثة 100%) ==========
+# ========== دالة رفع إلى GoFile.io ==========
 def upload_to_gofile(filepath):
-    """رفع الملف إلى GoFile.io - نسخة مضبوطة"""
+    """رفع الملف إلى GoFile.io"""
     try:
         # الحصول على أفضل سيرفر
         print("🔍 البحث عن أفضل سيرفر...")
@@ -73,41 +73,21 @@ def upload_to_gofile(filepath):
                 timeout=300
             )
         
-        print(f"📥 حالة الاستجابة: {response.status_code}")
-        
         if response.status_code == 200:
             data = response.json()
-            print(f"📦 البيانات المستلمة: {data}")
-            
-            if data.get('status') == 'ok':
-                # الطريقة الصحيحة للحصول على الرابط
-                if 'data' in data and 'downloadPage' in data['data']:
-                    download_link = data['data']['downloadPage']
-                    print(f"✅ تم الرفع بنجاح: {download_link}")
-                    return download_link
-                elif 'data' in data and 'fileId' in data['data']:
-                    # طريقة بديلة
-                    file_id = data['data']['fileId']
-                    download_link = f"https://gofile.io/d/{file_id}"
-                    print(f"✅ تم الرفع بنجاح: {download_link}")
-                    return download_link
-                else:
-                    print(f"❌ بنية البيانات غير متوقعة: {data}")
-                    return None
-            else:
-                print(f"❌ فشل الرفع: {data.get('message', 'خطأ غير معروف')}")
-                return None
-        else:
-            print(f"❌ خطأ في الاتصال: {response.status_code}")
-            return None
-            
+            if data.get('status') == 'ok' and 'data' in data:
+                if 'downloadPage' in data['data']:
+                    return data['data']['downloadPage']
+                elif 'fileId' in data['data']:
+                    return f"https://gofile.io/d/{data['data']['fileId']}"
+        return None
     except Exception as e:
         print(f"❌ خطأ في الرفع: {e}")
         return None
 
-# ========== دالة إرسال رسالة تليجرام (محدثة) ==========
+# ========== دالة إرسال رسالة تليجرام ==========
 def send_telegram(message):
-    """إرسال رسالة إلى قناة تليجرام"""
+    """إرسال رسالة إلى حسابك الشخصي"""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {
         'chat_id': CHANNEL_ID,
@@ -117,14 +97,13 @@ def send_telegram(message):
     try:
         response = requests.post(url, data=data, timeout=10)
         if response.status_code == 200:
-            print("✅ تم إرسال الرسالة إلى تليجرام")
+            print("✅ تم إرسال الرسالة إلى حسابك")
             return True
         else:
-            print(f"❌ خطأ في إرسال تليجرام: {response.status_code}")
-            print(f"📦 استجابة تليجرام: {response.text}")
+            print(f"❌ خطأ في الإرسال: {response.status_code}")
             return False
     except Exception as e:
-        print(f"❌ خطأ في إرسال تليجرام: {e}")
+        print(f"❌ خطأ: {e}")
         return False
 
 # ========== الدالة الرئيسية ==========
@@ -144,29 +123,29 @@ def main():
         filename = f"video_{i}.mp4"
         
         try:
-            # 1. تحميل الفيديو من Vimeo
+            # تحميل الفيديو من Vimeo
             print("📥 جاري التحميل من Vimeo...")
             ydl_opts = {
                 'format': 'best[height<=480]',
                 'outtmpl': filename,
                 'quiet': True,
                 'no_warnings': True,
-                'ignoreerrors': True,  # تجاهل أخطاء معينة
+                'ignoreerrors': True,
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([video['url']])
             
-            # 2. التحقق من التحميل
+            # التحقق من التحميل
             if os.path.exists(filename) and os.path.getsize(filename) > 0:
                 size_mb = os.path.getsize(filename) / (1024 * 1024)
                 print(f"✅ تم التحميل ({size_mb:.1f} MB)")
                 
-                # 3. رفع إلى GoFile.io
+                # رفع إلى GoFile.io
                 link = upload_to_gofile(filename)
                 
                 if link:
-                    # 4. إرسال الرابط إلى تليجرام
+                    # إرسال الرابط إلى حسابك
                     message = (
                         f"🎬 <b>{video['title']}</b>\n"
                         f"📁 الحجم: {size_mb:.1f} MB\n"
@@ -182,14 +161,14 @@ def main():
                     print(f"❌ فشل الرفع إلى GoFile.io")
                     failed += 1
                 
-                # 5. حذف الملف المؤقت
+                # حذف الملف المؤقت
                 try:
                     os.remove(filename)
                     print(f"🗑️ تم حذف الملف المؤقت")
                 except:
                     pass
             else:
-                print(f"❌ فشل التحميل من Vimeo (الملف فارغ أو غير موجود)")
+                print(f"❌ فشل التحميل من Vimeo")
                 failed += 1
                 
         except Exception as e:
