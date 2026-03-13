@@ -43,22 +43,51 @@ VIDEOS = [
     {"url": "https://vimeo.com/1086211265?share=copy", "title": "31_P1_Price_Action_01"},
 ]
 
-# ========== دالة رفع إلى GoFile.io ==========
+# ========== دالة رفع إلى GoFile.io (محدثة) ==========
 def upload_to_gofile(filepath):
-    """رفع الملف إلى GoFile.io (بدون حدود)"""
+    """رفع الملف إلى GoFile.io"""
     try:
+        # الحصول على أفضل سيرفر
+        print("🔍 البحث عن أفضل سيرفر...")
+        server_response = requests.get('https://api.gofile.io/servers', timeout=10)
+        
+        if server_response.status_code == 200:
+            server_data = server_response.json()
+            if server_data['status'] == 'ok' and server_data['data']['servers']:
+                server = server_data['data']['servers'][0]['name']
+                print(f"✅ تم اختيار السيرفر: {server}")
+            else:
+                server = 'store1'
+                print("⚠️ استخدام السيرفر الافتراضي: store1")
+        else:
+            server = 'store1'
+            print("⚠️ استخدام السيرفر الافتراضي: store1")
+        
+        # رفع الملف
+        print(f"📤 رفع الملف إلى {server}.gofile.io...")
         with open(filepath, 'rb') as f:
             response = requests.post(
-                'https://store1.gofile.io/uploadFile',
+                f'https://{server}.gofile.io/uploadFile',
                 files={'file': f},
                 timeout=300
             )
         
         if response.status_code == 200:
             data = response.json()
+            print(f"📥 استجابة الخادم: {data['status']}")
+            
             if data['status'] == 'ok':
-                return f"https://gofile.io/d/{data['data']['fileId']}"
-        return None
+                file_id = data['data']['fileId']
+                download_link = f"https://gofile.io/d/{file_id}"
+                print(f"✅ تم الرفع بنجاح: {download_link}")
+                return download_link
+            else:
+                print(f"❌ خطأ في الاستجابة: {data}")
+                return None
+        else:
+            print(f"❌ خطأ في الاتصال: {response.status_code}")
+            return None
+            
     except Exception as e:
         print(f"❌ خطأ في الرفع: {e}")
         return None
@@ -73,7 +102,11 @@ def send_telegram(message):
         'parse_mode': 'HTML'
     }
     try:
-        requests.post(url, data=data, timeout=10)
+        response = requests.post(url, data=data, timeout=10)
+        if response.status_code == 200:
+            print("✅ تم إرسال الرسالة إلى تليجرام")
+        else:
+            print(f"❌ خطأ في إرسال تليجرام: {response.status_code}")
     except Exception as e:
         print(f"❌ خطأ في إرسال تليجرام: {e}")
 
@@ -97,7 +130,7 @@ def main():
             # 1. تحميل الفيديو من Vimeo
             print("📥 جاري التحميل من Vimeo...")
             ydl_opts = {
-                'format': 'best[height<=480]',  # جودة 480p توازن بين الجودة والحجم
+                'format': 'best[height<=480]',
                 'outtmpl': filename,
                 'quiet': True,
                 'no_warnings': True,
@@ -110,9 +143,8 @@ def main():
             if os.path.exists(filename):
                 size_mb = os.path.getsize(filename) / (1024 * 1024)
                 print(f"✅ تم التحميل ({size_mb:.1f} MB)")
-                print("📤 جاري الرفع إلى GoFile.io...")
                 
-                # 3. رفع إلى GoFile.io (بدون حدود)
+                # 3. رفع إلى GoFile.io
                 link = upload_to_gofile(filename)
                 
                 if link:
@@ -124,7 +156,7 @@ def main():
                         f"🔗 <a href='{link}'>رابط التحميل</a>"
                     )
                     send_telegram(message)
-                    print(f"✅ تم رفع {video['title']} إلى GoFile.io")
+                    print(f"✅ تم رفع {video['title']}")
                     successful += 1
                 else:
                     print(f"❌ فشل الرفع إلى GoFile.io")
