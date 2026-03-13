@@ -41,29 +41,53 @@ VIDEOS = [
 ]
 
 async def main():
-    print(f"🚀 بدء رفع {len(VIDEOS)} فيديو...")
+    print(f"🚀 بدء رفع {len(VIDEOS)} فيديو كملفات...")
     bot = Bot(token=BOT_TOKEN)
     
-    for video in VIDEOS:
+    for i, video in enumerate(VIDEOS, 1):
         try:
-            print(f"\n📥 {video['title']}")
+            print(f"\n[{i}/{len(VIDEOS)}] 📥 {video['title']}")
             filename = f"{video['title']}.mp4"
             
-            # تحميل
-            ydl_opts = {'format': 'best[height<=720]', 'outtmpl': filename, 'quiet': True}
+            # تحميل الفيديو
+            ydl_opts = {
+                'format': 'best[height<=720]',  # يمكنك تغيير الجودة
+                'outtmpl': filename,
+                'quiet': True
+            }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([video['url']])
             
-            # رفع
-            with open(filename, 'rb') as f:
-                await bot.send_video(CHANNEL_ID, f, caption=video['title'])
+            # رفع كملف (Document)
+            if os.path.exists(filename):
+                size = os.path.getsize(filename) / (1024 * 1024)
+                print(f"✅ تم التحميل ({size:.1f} MB)")
+                print("📤 جاري الرفع كملف...")
+                
+                with open(filename, 'rb') as f:
+                    await bot.send_document(
+                        chat_id=CHANNEL_ID,
+                        document=f,
+                        caption=f"📹 {video['title']}\n📁 الحجم: {size:.1f} MB\n✅ تم الرفع كملف"
+                    )
+                
+                print(f"✅ تم رفع {video['title']}")
+                
+                # مسح الملف
+                os.remove(filename)
+                print(f"🗑️ تم مسح الملف المؤقت")
+            else:
+                print("❌ فشل التحميل")
             
-            # مسح
-            os.remove(filename)
-            print(f"✅ {video['title']}")
+            # انتظار قليل
+            await asyncio.sleep(2)
             
         except Exception as e:
-            print(f"❌ خطأ: {e}")
+            print(f"❌ خطأ في {video['title']}: {e}")
+    
+    print("\n" + "="*50)
+    print("✨ تم الانتهاء من رفع جميع الفيديوهات!")
+    print("="*50)
 
 if __name__ == "__main__":
     asyncio.run(main())
