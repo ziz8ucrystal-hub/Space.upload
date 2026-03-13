@@ -1,11 +1,14 @@
 import os
 import yt_dlp
-import asyncio
-from telegram import Bot
+import requests
+import json
+from datetime import datetime
 
+# ========== توكن بوت تليجرام ==========
 BOT_TOKEN = "8763050525:AAGjCizH6kCuWJc4e8tt6TKaSMRDYgA1hxQ"
 CHANNEL_ID = "@JF_Ziz8u"
 
+# ========== قائمة الفيديوهات مباشرة في الملف ==========
 VIDEOS = [
     {"url": "https://player.vimeo.com/video/1043974638", "title": "01_Trading_View"},
     {"url": "https://player.vimeo.com/video/1064144416", "title": "02_Risk_Management_P1"},
@@ -40,54 +43,116 @@ VIDEOS = [
     {"url": "https://vimeo.com/1086211265?share=copy", "title": "31_P1_Price_Action_01"},
 ]
 
-async def main():
-    print(f"🚀 بدء رفع {len(VIDEOS)} فيديو كملفات...")
-    bot = Bot(token=BOT_TOKEN)
+# ========== دوال المساعدة ==========
+def send_telegram(message):
+    """إرسال رسالة إلى تليجرام"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {
+        'chat_id': CHANNEL_ID,
+        'text': message,
+        'parse_mode': 'HTML'
+    }
+    try:
+        requests.post(url, data=data, timeout=10)
+        print(f"📤 تم إرسال: {message[:50]}...")
+    except Exception as e:
+        print(f"❌ خطأ في إرسال تليجرام: {e}")
+
+def upload_to_gofile(filepath):
+    """رفع الملف إلى GoFile.io"""
+    try:
+        with open(filepath, 'rb') as f:
+            response = requests.post(
+                'https://store1.gofile.io/uploadFile',
+                files={'file': f},
+                timeout=300
+            )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data['status'] == 'ok':
+                return f"https://gofile.io/d/{data['data']['fileId']}"
+        return None
+    except Exception as e:
+        print(f"❌ خطأ في الرفع: {e}")
+        return None
+
+# ========== الدالة الرئيسية ==========
+def main():
+    print("="*50)
+    print(f"🚀 بدء رفع {len(VIDEOS)} فيديو إلى GoFile.io")
+    print("="*50)
+    
+    send_telegram(f"🚀 بدء رفع {len(VIDEOS)} فيديو إلى GoFile.io")
+    
+    successful = 0
+    failed = 0
     
     for i, video in enumerate(VIDEOS, 1):
+        print(f"\n[{i}/{len(VIDEOS)}] 📥 {video['title']}")
+        
+        filename = f"video_{i}.mp4"
+        
         try:
-            print(f"\n[{i}/{len(VIDEOS)}] 📥 {video['title']}")
-            filename = f"{video['title']}.mp4"
-            
-            # تحميل الفيديو
+            # 1. تحميل الفيديو من Vimeo
+            print("📥 جاري التحميل من Vimeo...")
             ydl_opts = {
-                'format': 'best[height<=720]',  # يمكنك تغيير الجودة
+                'format': 'best[height<=480]',  # جودة 480p
                 'outtmpl': filename,
-                'quiet': True
+                'quiet': True,
+                'no_warnings': True,
             }
+            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([video['url']])
             
-            # رفع كملف (Document)
+            # 2. التحقق من التحميل
             if os.path.exists(filename):
-                size = os.path.getsize(filename) / (1024 * 1024)
-                print(f"✅ تم التحميل ({size:.1f} MB)")
-                print("📤 جاري الرفع كملف...")
+                size_mb = os.path.getsize(filename) / (1024 * 1024)
+                print(f"✅ تم التحميل ({size_mb:.1f} MB)")
+                print("📤 جاري الرفع إلى GoFile.io...")
                 
-                with open(filename, 'rb') as f:
-                    await bot.send_document(
-                        chat_id=CHANNEL_ID,
-                        document=f,
-                        caption=f"📹 {video['title']}\n📁 الحجم: {size:.1f} MB\n✅ تم الرفع كملف"
+                # 3. رفع إلى GoFile
+                link = upload_to_gofile(filename)
+                
+                if link:
+                    # 4. إرسال الرابط إلى تليجرام
+                    message = (
+                        f"🎬 <b>{video['title']}</b>\n"
+                        f"📁 الحجم: {size_mb:.1f} MB\n"
+                        f"✅ تم الرفع إلى GoFile.io\n"
+                        f"🔗 <a href='{link}'>رابط التحميل</a>"
                     )
+                    send_telegram(message)
+                    print(f"✅ تم رفع {video['title']}")
+                    successful += 1
+                else:
+                    print(f"❌ فشل الرفع إلى GoFile")
+                    failed += 1
                 
-                print(f"✅ تم رفع {video['title']}")
-                
-                # مسح الملف
+                # 5. حذف الملف المؤقت
                 os.remove(filename)
-                print(f"🗑️ تم مسح الملف المؤقت")
+                print(f"🗑️ تم حذف الملف المؤقت")
             else:
-                print("❌ فشل التحميل")
-            
-            # انتظار قليل
-            await asyncio.sleep(2)
-            
+                print(f"❌ فشل التحميل من Vimeo")
+                failed += 1
+                
         except Exception as e:
-            print(f"❌ خطأ في {video['title']}: {e}")
+            print(f"❌ خطأ: {str(e)}")
+            failed += 1
+    
+    # التقرير النهائي
+    summary = (
+        f"✨ <b>تم الانتهاء من الرفع</b>\n"
+        f"✅ نجح: {successful}\n"
+        f"❌ فشل: {failed}"
+    )
+    send_telegram(summary)
     
     print("\n" + "="*50)
-    print("✨ تم الانتهاء من رفع جميع الفيديوهات!")
+    print(f"✅ تم بنجاح: {successful}")
+    print(f"❌ فشل: {failed}")
     print("="*50)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
